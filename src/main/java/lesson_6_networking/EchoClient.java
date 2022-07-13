@@ -4,14 +4,77 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.net.Socket;
 
 public class EchoClient extends JFrame {
 
     private final String SERVER_ADRES = "localhost";
-    private final int SERVER_POR = 8089;
+    private final int SERVER_PORT = 8089;
 
     private  JTextField textField;
     private JTextArea textArea;
+
+    private Socket socket;
+    private DataOutputStream dataOutputStream;
+    private DataInputStream dataInputStream;
+
+    private void openConnection() throws IOException {
+        socket = new Socket(SERVER_ADRES, SERVER_PORT);
+        dataInputStream = new DataInputStream(socket.getInputStream());
+        dataOutputStream = new DataOutputStream(socket.getOutputStream());
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+try {
+    while (true) {
+        String massageFromServer = dataInputStream.readUTF();
+        if (massageFromServer.equals("/end")) {
+            break;
+        }
+        textArea.append(massageFromServer);
+        textArea.append("/n");
+    }
+
+} catch (Exception ex) {
+    ex.printStackTrace();
+}
+            }
+        }).start();
+    }
+
+    private void sendMessage() {
+        if (textField.getText().isEmpty()) {
+            return;
+        }
+        try {
+            dataOutputStream.writeUTF(textField.getText());
+            textField.setText("");
+            textField.grabFocus();
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+    }
+
+    private void closeConnection() {
+        try {
+            dataOutputStream.close();
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        try {
+            dataInputStream.close();
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        try {
+            socket.close();
+        } catch (Exception ex) {
+
+        }
+    }
 
     public EchoClient() {
         prepareUI();
@@ -39,13 +102,13 @@ public class EchoClient extends JFrame {
         button.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent actionEvent) {
-                //sendMessage();
+                sendMessage();
             }
         });
         textField.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent actionEvent) {
-                //sendMessage();
+                sendMessage();
             }
         });
 
@@ -55,6 +118,6 @@ public class EchoClient extends JFrame {
     }
 
     public static void main(String[] args) {
-        SwingUtilities.invokeLater(() -> new EchoClient());
+        SwingUtilities.invokeLater(EchoClient::new); // SwingUtilities.invokeLater(new Runnable(){@Override pablic void Run(){new EhoClient()}});
     }
 }
